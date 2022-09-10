@@ -1,0 +1,30 @@
+{:paths []
+ :mvn/repos {"central" {:url "https://repo1.maven.org/maven2/"}
+             "clojars" {:url "https://clojars.org/repo"}}
+ :deps
+ {
+  is.mad/high {:local/root "./server/high"}
+  org.clojure/clojurescript {:mvn/version "1.11.60"}
+  is.mad/shared-web3 {:local/root "./shared/web3"}
+  is.mad/shared-low-level {:local/root "./shared/web3"}
+  }
+
+ :install-deps true
+ :aliases
+ {
+  :server-high {:extra-paths ["server/high/test"]}
+  :browser-high {:extra-paths ["browser/high/test"]}
+  :shared-low-level {:extra-deps {is.mad/shared-low-level {:local/root "./shared/low-level"}}
+                     :extra-paths ["shared/low-level/src" "shared/low-level/test"]}
+  :shared-web3 {:extra-deps {is.mad/shared-web3 {:local/root "./shared/web3"}}
+                :extra-paths ["shared/web3/src" "shared/web3/test"]}
+  :shared-* {:extra-deps [:shared-low-level :shared-web3]
+             :extra-paths [:shared-low-level :shared-web3]}
+
+  :shadow {:extra-deps {thheller/shadow-cljs {:mvn/version "2.20.1"}}
+           :main-opts ["-m" "shadow.cljs.devtools.cli"]}
+  :dev
+  {
+   :extra-deps
+   {nrepl/nrepl {:mvn/version "0.8.3"}
+    cider/piggieback {:mvn/version "0.5.3"}}}}}
