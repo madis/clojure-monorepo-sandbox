@@ -4,11 +4,8 @@
   (:require [clojure.java.shell :refer [sh with-sh-dir]]
             [babashka.fs :as fs]))
 
-; Help and useful materials:
-;  Filesystem API: https://github.com/babashka/fs/blob/master/API.md
-;  Simple HTTP requests: https://github.com/babashka/babashka.curl#get
-;  Interacting with command line tools: https://book.babashka.org/#_clojure_java_shell
-;    - (clojure.java.shell/sh "ls" "-la")
+(defn log [& args]
+  (apply println args))
 
 (defn absolutize-path [path]
   (let [absolute-path? (clojure.string/starts-with? "/" path)]
@@ -21,16 +18,23 @@
 
 (defn move-merging-git-histories [source-path target-path]
   (let [remote-name (str (last (fs/components source-path)))
-        _ (sh "git" "reset" "--hard" :dir target-path) ; To avoid 'Working tree has modifications' error
+        ; _ (sh "git" "reset" "--hard" :dir target-path) ; To avoid 'Working tree has modifications' error
+        _ (sh "git" "stash" :dir target-path) ; Remember any changes in the working tree
         ; Idea from https://www.jvt.me/posts/2018/06/01/git-subtree-monorepo/
-        merge-result (sh "git" "subtree" "add" (str "--prefix=" remote-name) source-path "master" :dir target-path)]
+        merge-result (sh "git" "subtree" "add" (str "--prefix=" remote-name) source-path "master" :dir target-path)
+        _ (sh "git" "stash" "pop" :dir target-path) ; Restore the changes in the working tree
+        ]
     (if (= 1 (:exit merge-result))
       (throw (ex-info (str "Failed running `git subtree`: " (:err merge-result)) merge-result)))))
 
 (defn -main [& args]
-  (let [library-path (first *command-line-args*)]
-    (println "Working with:" library-path)
-    (println "library-structure-as-expected?" (library-structure-as-expected? library-path))))
+  (println "WITH ARGS: " args)
+  (let [[library-path target-path] *command-line-args*]
+    (log "Migrating" library-path "to" target-path)
+    (cond
+      (library-structure-as-expected? library-path) (move-merging-git-histories library-path target-path)
+      :else (log "Library doesn't have the expected structure (needs deps.edn)"))
+    (move-merging-git-histories library-path target-path)))
 
 ; To allow running as commandn line util but also required & used in other programs or REPL
 ; https://book.babashka.org/#main_file

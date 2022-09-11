@@ -51,5 +51,5 @@
     (let [test-repo-path (set-up-git-repo-in-tmp "bin_test/fixtures/test-repo.tar.gz")
           container-repo-path (set-up-git-repo-in-tmp "bin_test/fixtures/container-repo.tar.gz")]
       (ml/move-merging-git-histories test-repo-path container-repo-path)
-      (is (= 5 (count-commits container-repo-path)))
+      (is (= 5 (count-commits container-repo-path))) ; 2 commits from container + 2 from test-repo + 1 merge
       (is (= (file-set-in (str container-repo-path "/test-repo")) (file-set-in test-repo-path))))))
