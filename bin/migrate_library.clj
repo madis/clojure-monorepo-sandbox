@@ -2,6 +2,7 @@
 
 (ns migrate-library
   (:require [clojure.java.shell :refer [sh with-sh-dir]]
+            [clojure.string :refer [trim]]
             [babashka.fs :as fs]))
 
 (defn log [& args]
@@ -24,15 +25,18 @@
   [source-path target-path & [subfolder-path]]
   (let [source-name (str (last (fs/components source-path)))
         prefix (or subfolder-path source-name)
-        ; _ (sh "git" "reset" "--hard" :dir target-path) ; To avoid 'Working tree has modifications' error
-        _ (sh "git" "stash" :dir target-path) ; Remember any changes in the working tree
-        _ (sh "git" "checkout" "-b" source-name)
-        ; Idea from https://www.jvt.me/posts/2018/06/01/git-subtree-monorepo/
-        merge-result (sh "git" "subtree" "add" (str "--prefix=" source-name) source-path "master" :dir target-path)
-        _ (sh "git" "stash" "pop" :dir target-path) ; Restore the changes in the working tree
-        ]
-    (if (= 1 (:exit merge-result))
-      (throw (ex-info (str "Failed running `git subtree`: " (:err merge-result)) merge-result)))))
+        ; original-target-branch (:out (sh "git" "branch" "--show-current" :dir target-path))
+        original-target-branch (clojure.string/trim (:out (sh "git" "branch" "--show-current" :dir target-path)))
+        merge-result (atom {})]
+    (with-sh-dir target-path
+      (sh "git" "stash") ; FIXME: Shouldn't be necessary. Remembers any changes in the working tree
+      (sh "git" "checkout" "-b" source-name)
+      (reset! merge-result (sh "git" "subtree" "add" (str "--prefix=" source-name) source-path "master"))
+      (sh "git" "checkout" original-target-branch)
+      (sh "git" "stash" "pop") ; FIXME: Shouldn't be necessary
+      (sh "git" "checkout" source-name))
+    (if (= 1 (:exit @merge-result))
+      (throw (ex-info (str "Failed running `git subtree`: " (:err @merge-result)) @merge-result)))))
 
 (defn -main [& args]
   (println "WITH ARGS: " args)

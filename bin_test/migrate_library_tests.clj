@@ -7,8 +7,8 @@
 ; Run tests in VIM
 ; :nmap <leader>tr :VtrSendCommandToRunner ./bin_test/test_runner.clj<CR>
 
-(defn count-commits [path]
-  (-> (sh "git" "rev-list" "HEAD" "--count" :dir path)
+(defn count-commits [path & {:keys [branch]}]
+  (-> (sh "git" "rev-list" (or branch "HEAD") "--count" :dir path)
       :out
       clojure.string/trim
       Integer/parseInt))
